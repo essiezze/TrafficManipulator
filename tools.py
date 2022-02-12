@@ -3,6 +3,10 @@ import numpy as np
 import argparse
 from utils import *
 
+"""
+Generates the normalizer for the Kitsune
+"""
+
 if __name__ == "__main__":
 
     parse = argparse.ArgumentParser()

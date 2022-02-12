@@ -1,3 +1,7 @@
+"""
+Construct packets from vectors of information
+"""
+
 from scapy.all import *
 import random
 import string
@@ -10,9 +14,9 @@ def random_bytes(length):
 
 
 def rebuild(
-    grp_size,
-    X,
-    groupList,
+    grp_size,           # the num of original malicious packets
+    X,                  # vectors of crafted and the original malicious traffic
+    groupList,          # the original malicious packets
     # tmp_pcap_file
 ):
 
@@ -20,14 +24,16 @@ def rebuild(
 
     for i in range(grp_size):
 
+        # iterate through each crafted packet for x_mal
         for j in range(int(round(X.mal[i][1]))):
             pkt = copy.deepcopy(groupList[i])
+
+            # parse protocol
             if round(X.craft[i][j][1]) == 1:
                 if groupList[i].haslayer(Ether):
                     pkt[Ether].remove_payload()
                 else:
                     raise RuntimeError("Error in rebuilder!")
-
             elif round(X.craft[i][j][1]) == 2:
                 if groupList[i].haslayer(IP):
                     pkt[IP].remove_payload()
@@ -48,6 +54,7 @@ def rebuild(
                     raise RuntimeError("Error in rebuilder!")
             else:
                 raise RuntimeError("Error in rebuilder!")
+
             pkt.add_payload(random_bytes(int(round(X.craft[i][j][2]))))
             pkt.time = X.mal[i][0] - X.craft[i][j][0]
             newList.append(pkt)

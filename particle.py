@@ -11,20 +11,23 @@ import time
 
 
 class Particle:
+    """
+    A candidate traffic mutant for the whole malicious traffic.
+    """
     def __init__(
             self,
-            last_end_time,  # initializer
-            groupList,  # initializer
-            max_time_extend,  # initializer
-            max_cft_pkt,  # initializer
+            last_end_time,      # initializer
+            groupList,          # initializer
+            max_time_extend,    # initializer
+            max_cft_pkt,        # initializer
             min_time_extend,
             max_crafted_pkt_prob,
             show_info=False):
 
         self.show_info = show_info
 
-        self.grp_size = len(groupList)
-        self.groupList = groupList
+        self.grp_size = len(groupList)          # num of original malicious packets
+        self.groupList = groupList              # the original malicious packets
         self.max_cft_pkt = max_cft_pkt
         self.max_time_extend = max_time_extend
         self.last_end_time = last_end_time
@@ -56,15 +59,16 @@ class Particle:
 
         self.pktList = rebuild(self.grp_size, self.X, self.groupList)
 
-        mal_pos = []
-        cft_num = 0
+        mal_pos = []    # idxs of original pkts
+        cft_num = 0     # total num of crafted pkts
         for i in range(self.grp_size):
             cft_num += int(round(self.X.mal[i][1]))
             # print("##Debug##", "X.mal[i][1]", self.X.mal[i][1])
             mal_pos.append(i + cft_num)
 
-        t1 = time.clock()
+        t1 = time.process_time()
 
+        # extract features
         self.local_FE = Kitsune(self.pktList, np.Inf, True)
         self.local_FE.FE.nstat = safelyCopyNstat(nstat, True)
         self.feature, self.all_feature = RunFE(self.local_FE,
@@ -76,11 +80,11 @@ class Particle:
 
         norm_feature = knormer.transform(self.feature)
 
-        t2 = time.clock()
+        t2 = time.process_time()
 
         FE_time = t2 - t1
 
-        self.dis = 0
+        self.dis = 0    # the total distance between each pkt to the benign traffic
 
         for i in range(self.grp_size):
             self.dis += min(np.linalg.norm(norm_feature[i] - mimic_set,

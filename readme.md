@@ -89,6 +89,12 @@ See line 31 in `main.py` :
    ```
    python KitNET/model.py -M exec -tf example/test.npy -rf example/test_rmse.pkl
    ```
+   An optional flag ``-e`` can be added to specify the output path
+    when running in execution mode to output the encodings of the 
+    output Autoencoder in Kitsune.
+    ````shell
+    python KitNET/model.py -M exec -tf example/test.npy -rf example/test_rmse.pkl -e example/encodings.pkl 
+   ````
 
 The RMSE of original malicious traffic reported by KitNET is as follows:
 <center>
@@ -111,6 +117,12 @@ The RMSE of original malicious traffic reported by KitNET is as follows:
    ```
    python eval.py -op example/test.pcap -or example/test_rmse.pkl -of example/test.npy -b example/mimic_set.npy -n example/normalizer.pkl
    ```
+   
+    Use `-e` to specify output path of the encodings and `-r` to 
+     specify the output path of RMSEs of the mutated traffic.
+   ````shell
+    python eval.py -op example/test.pcap -or example/test_rmse.pkl -of example/test.npy -b example/mimic_set.npy -n example/normalizer.pkl -e example/mutated_encodings.pkl -r example/mutated_rmses.pkl
+    ````
 
 
 The result should look like the figure below:

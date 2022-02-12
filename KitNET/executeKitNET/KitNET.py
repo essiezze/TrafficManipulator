@@ -64,9 +64,9 @@ class KitNET:
     #If FM_grace_period+AM_grace_period has passed, then this function executes KitNET on x. Otherwise, this function learns from x.
     #x: a numpy array of length n
     #Note: KitNET automatically performs 0-1 normalization on all attributes.
-    def process(self,x):
+    def process(self,x, output_encode=False):
         # if self.n_trained > self.FM_grace_period + self.AD_grace_period: #If both the FM and AD are in execute-mode
-        return self.execute(x)
+        return self.execute(x, output_encode=output_encode)
         # else:
         #     print("## ERROR ! in KitNet.py 002")
         #     self.train(x)
@@ -104,7 +104,7 @@ class KitNET:
     #     self.n_trained += 1
 
     #force execute KitNET on x
-    def execute(self,x):
+    def execute(self,x, output_encode=False):
         if self.v is None:
             raise RuntimeError('KitNET Cannot execute x, because a feature mapping has not yet been learned or provided. Try running process(x) instead.')
         else:
@@ -116,7 +116,7 @@ class KitNET:
                 xi = x[self.v[a]]
                 S_l1[a] = self.ensembleLayer[a].execute(xi,1)
             ## OutputLayer
-            return self.outputLayer.execute(S_l1,2)
+            return self.outputLayer.execute(S_l1,2, output_encode=output_encode)
 
     # def __createAD__(self):
     #     # construct ensemble layer

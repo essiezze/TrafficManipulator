@@ -1,0 +1,6 @@
+dependencies:
+  -Cython
+  -scapy
+  -numpy
+  -scipy
+  -matplotlib

@@ -1,3 +1,5 @@
+import pickle
+
 from scapy.all import *
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,7 +23,14 @@ class Analyzer:
                  org_pcap_file,
                  sta_data_file,
                  model_save_path,
+                 encodings_output_path,
+                 rmse_output_path,
                  limit=None):
+        self.output_encodings = bool(encodings_output_path)
+        self.encodings_output_path = encodings_output_path
+        self.output_rmse = bool(rmse_output_path)
+        self.rmse_output_path = rmse_output_path
+        self.encodings = None
 
         self.del_num = 0
 
@@ -52,7 +61,11 @@ class Analyzer:
         self.feature_list[:, 82:99:4] = 0.
 
         # compiling mutated features
-        self.rmse_list = test_mut(self.feature_list, model_save_path)
+        if self.output_encodings:
+            self.rmse_list, encodings = test_mut(self.feature_list, model_save_path,
+                                                 output_encodings=self.output_encodings)
+        else:
+            self.rmse_list = test_mut(self.feature_list, model_save_path)
         self.rmse_list = np.array(self.rmse_list)
 
         # Analyzing partial data
@@ -69,6 +82,15 @@ class Analyzer:
                   "<", len(self.org_rmse_list))
             self.org_pcap = self.org_pcap[:self.len]
             self.org_rmse_list = self.org_rmse_list[:self.len]
+
+        # output rmse and encodings
+        if self.output_encodings:
+            with open(self.encodings_output_path, "wb") as fp:
+                pickle.dump(encodings, fp)
+
+        if self.output_rmse:
+            with open(self.rmse_output_path, "wb") as fp:
+                pickle.dump(self.rmse_list, fp)
 
     def del_outlier(self, extend=2):
         del_list = []
@@ -169,7 +191,9 @@ class Analyzer:
             print("  MMR:", MMR)
 
     def plt_rmse(self, AD_threshold):
-
+        """
+        Plots the comparision between the RMSEs of the malicious traffic before and after mutation
+        """
         x = np.arange(0, self.len, 1)
         plt.figure()
         # plt.scatter(x, np.log(self.org_rmse_list), s=16,  c='#8A977B',alpha=0.5,label="Before")
@@ -255,6 +279,18 @@ if __name__ == "__main__":
                        default='./example/model.pkl',
                        help="model_file after training")
 
+    parse.add_argument('-e',
+                       '--output_encodings_path',
+                       dest="output_encodings_path",
+                       default=None,
+                       help="The output path of the encodings in the output Autoencoder of Kitsune")
+
+    parse.add_argument('-r',
+                       '--output_rmse_path',
+                       dest="output_rmse_path",
+                       default=None,
+                       help="The output path of the RMSEs of the mutated traffic")
+
     arg = parse.parse_args()
 
     a = Analyzer(
@@ -262,6 +298,8 @@ if __name__ == "__main__":
         org_pcap_file=arg.org_pcap_file,
         sta_data_file=arg.sta_file,
         model_save_path=arg.model_file_path,
+        encodings_output_path=arg.output_encodings_path,
+        rmse_output_path=arg.output_rmse_path
         # limit = 10000
     )
 

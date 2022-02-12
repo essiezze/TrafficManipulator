@@ -2,10 +2,13 @@ from particle import Particle
 import numpy as np
 from scapy.all import *
 
-class PSO:
-    def __init__(self, max_iter, particle_num, grp_size=0, alg='L'):
 
-        self.max_iter = max_iter
+class PSO:
+    """
+    PSO-based Automatic traffic mutation
+    """
+    def __init__(self, max_iter, particle_num, grp_size=0, alg='L'):
+        self.max_iter = max_iter            # num of the eval and update rounds
         self.particle_num = particle_num
         self.grp_size = grp_size
 
@@ -17,7 +20,7 @@ class PSO:
 
         self.global_best_pktlist = None
 
-        self.swarm = []
+        self.swarm = []     # candidates
 
         self.STA_glb_dis_list = []
         self.STA_avg_dis_list = []

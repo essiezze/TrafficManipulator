@@ -5,35 +5,62 @@ import executeKitNET.KitNET as eKN
 import trainKitNET.KitNET as tKN
 import argparse
 
+
 def RunKN(K,Feature):
+    """
+    Execute the KitNet and generate results for each set of extracted features.
+
+    :param K: a eKitsune, the KitNet
+    :param Feature: features extracted from raw network traffic
+    :return: the rmse for each packet
+    """
     RMSEs = []
+    encodings = []
+    output_encodings = (type(K) == eKitsune and K.output_encode)
     for i,x in enumerate(Feature):
-        rmse = K.proc_next_packet(x)
+        if output_encodings:
+            rmse, encoding = K.proc_next_packet(x)
+        else:
+            rmse = K.proc_next_packet(x)
         if i%1000==0:
             print("--- RunKitNET: Pkts",i,"---")
         if rmse == -1:
             break
         RMSEs.append(rmse)
-    return RMSEs
+        if output_encodings:
+            encodings.append(encoding)
+
+    if output_encodings:
+        return RMSEs, np.array(encodings)
+    else:
+        return RMSEs
 
 
-def test_mut(mut_feat,model_save_path):
+def test_mut(mut_feat,model_save_path, output_encodings=False):
 
     Feature_Size = mut_feat.shape[1]
-    ekn = eKitsune(model_save_path, Feature_Size, 10)
-    rmse = RunKN(ekn, mut_feat)
+    ekn = eKitsune(model_save_path, Feature_Size, 10, output_encode=output_encodings)
 
-    return rmse
+    if output_encodings:
+        rmse, encodings = RunKN(ekn, mut_feat)
+        return rmse, encodings
+    else:
+        rmse = RunKN(ekn, mut_feat)
+        return rmse
 
+"""
+The KitNet
+"""
 class eKitsune:
     
-    def __init__(self,model_save_path,feature_size,max_autoencoder_size=10,learning_rate=0.1,hidden_ratio=0.75,):
+    def __init__(self,model_save_path,feature_size,max_autoencoder_size=10,learning_rate=0.1,hidden_ratio=0.75,output_encode=False):
         
         self.AnomDetector = eKN.KitNET(model_save_path,feature_size,max_autoencoder_size,learning_rate,hidden_ratio)
+        self.output_encode = output_encode
 
     def proc_next_packet(self,x):
         
-        return self.AnomDetector.process(x)  # will train during the grace periods, then execute on all the rest.
+        return self.AnomDetector.process(x, output_encode=self.output_encode)  # will train during the grace periods, then execute on all the rest.
 
 
 class tKitsune:
@@ -64,6 +91,8 @@ if __name__ == "__main__":
                        help="the number of instances taken to learn the feature mapping (the ensemble's architecture)")
     parse.add_argument('-ad', '--ADgrace', type=int, default=50000,
                        help="the number of instances used to train the anomaly detector (ensemble itself)")
+    parse.add_argument('-e', '--encoding_path', dest='encoding_path', type=str, default=None,
+                        help='Output path for the encodings, only for execution mode')
 
     arg = parse.parse_args()
 
@@ -97,10 +126,16 @@ if __name__ == "__main__":
         feature[:, 33:50:4] = 0.
         feature[:, 83:100:4] = 0.
 
-        ekn = eKitsune(arg.model_file_path, feature_size, arg.maxAE)
+        output_encodings = bool(arg.encoding_path)
+        ekn = eKitsune(arg.model_file_path, feature_size, arg.maxAE, output_encode=output_encodings)
 
-        rmse = RunKN(ekn, feature)
+        encodings = None
+        if output_encodings:
+            rmse, encodings = RunKN(ekn, feature)
+        else:
+            rmse = RunKN(ekn, feature)
         rmse = np.array(rmse)
+
         with open(arg.RMSE_file_path, 'wb') as f:
             pkl.dump(rmse, f)
 
@@ -109,6 +144,11 @@ if __name__ == "__main__":
             _ = pkl.load(f)
             _ = pkl.load(f)
             AD_threshold = pkl.load(f)
+
+        # output encoding
+        if output_encodings:
+            with open(arg.encoding_path, 'wb') as f:
+                pkl.dump(encodings, f)
 
         print('AD_threshold:', AD_threshold)
         print('# rmse over AD_t:', rmse[rmse > AD_threshold].shape)

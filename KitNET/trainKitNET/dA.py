@@ -106,12 +106,16 @@ class dA:
         return numpy.sqrt(numpy.mean(L_h2**2)) #the RMSE reconstruction error during training
 
 
-    def reconstruct(self, x):
+    def reconstruct(self, x, output_encode=False):
         y = self.get_hidden_values(x)
         z = self.get_reconstructed_input(y)
-        return z
 
-    def execute(self, x, layer=1): #returns MSE of the reconstruction of x
+        if output_encode:
+            return z, y
+        else:
+            return z
+
+    def execute(self, x, layer=1, output_encode=False): #returns MSE of the reconstruction of x
         if self.n < self.params.gracePeriod:
             return 0.0
         else:
@@ -122,13 +126,21 @@ class dA:
                 # 0-1 normalize
                 x = (x - self.norm_min) / (self.norm_max - self.norm_min + 0.0000000000000001)
 
-            z = self.reconstruct(x)
+            reconstructed = self.reconstruct(x, output_encode=output_encode)
+            if output_encode:
+                z, y = reconstructed
+            else:
+                z = reconstructed
 
             # if (self.norm_max - self.norm_min).any() > 1e2:
                 # print(self.norm_min,self.norm_max,x)
             # print(self.norm_min.shape[0],self.norm_max.shape[0],x.shape[0])
             rmse = numpy.sqrt(((x - z) ** 2).mean()) #MSE
-            return rmse
+
+            if output_encode:
+                return rmse, y
+            else:
+                return rmse
 
 
     def inGrace(self):
