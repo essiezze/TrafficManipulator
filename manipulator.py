@@ -27,9 +27,9 @@ STA_all_feature_list = []
 class Manipulator:
 
     # Manipulator Parameters
-    grp_size = 5
-    min_time_extend = 0.
-    max_time_extend = 5.
+    grp_size = 5            # number of candidate mutations in each group
+    min_time_extend = 0.    # times of the original interval
+    max_time_extend = 5.    # times of the original interval
     max_cft_pkt = 5
     max_crafted_pkt_prob = 1.
 
