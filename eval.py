@@ -163,7 +163,8 @@ class Analyzer:
         b = self.org_rmse_list[self.org_rmse_list > AD_threshold].shape[0]
         a = self.rmse_list[self.rmse_list > AD_threshold].shape[0]
         print("  original:", b, "mutated:", a)
-        print("  PDR:", (b - a) / b)
+        if b != 0:
+            print("  PDR:", (b - a) / b)
         print("-" * 64)
 
         if need_mmr:
@@ -190,7 +191,7 @@ class Analyzer:
             print("  Before:", org_dis, "After:", mut_dis)
             print("  MMR:", MMR)
 
-    def plt_rmse(self, AD_threshold):
+    def plt_rmse(self, AD_threshold, title="RMSE change and mean", save_path=None):
         """
         Plots the comparision between the RMSEs of the malicious traffic before and after mutation
         """
@@ -225,13 +226,16 @@ class Analyzer:
                  c='black',
                  linewidth=2,
                  label="AD_threshold")
-        plt.title("RMSE change and mean")
+        plt.title(title)
         plt.xlabel('pkt no.')
         plt.ylabel('RMSE in Kitsune')
         plt.legend(loc='upper right')
 
         # plt.savefig('./tmp.pdf')
-        plt.show()
+        if save_path:
+            plt.savefig(save_path, dpi=300)
+        else:
+            plt.show()
 
 
 if __name__ == "__main__":
