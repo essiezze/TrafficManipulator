@@ -13,7 +13,11 @@ if __name__ == "__main__":
 
     parse.add_argument('-M', '--mode', type=str, default='CK', help="{CK:compiling KNnormalizer,}")
 
-    parse.add_argument('-tf', '--feat_file_path', type=str, default='./example/train_ben.npy', help="train feature file path(.npy)")
+    path_to_feat_file_arg_group = parse.add_mutually_exclusive_group(required=True)
+    path_to_feat_file_arg_group.add_argument('-tf', '--feat_file_path', type=str,
+                                             help="train feature file path (.npy)")
+    path_to_feat_file_arg_group.add_argument('-tfs', '--path_to_feat_files', type=str,
+                                             help="path to a file storing multiple feature file paths for training")
 
     parse.add_argument('-mf', '--model_file_path', type=str, default='./example/model.pkl',
                        help="model saved file path (.pkl)")
@@ -28,7 +32,21 @@ if __name__ == "__main__":
 
     arg = parse.parse_args()
 
-    train_feat = np.load(arg.feat_file_path)
+    if arg.feat_file_path:
+        train_feat = np.load(arg.feat_file_path)
+    else:
+        train_feats = []
+        line = None
+        with open(arg.path_to_feat_files) as fp:
+            line = fp.readline().rstrip()
+            while line != "":
+                if not line.isspace():
+                    train_feats.append(np.load(line))
+                    print(f"{line} loaded")
+
+                line = fp.readline().rstrip()
+        train_feat = np.concatenate(train_feats, axis=0)
+
     knormer = KNnormalizer(arg.model_file_path)
     knormer.fit_transform(train_feat[arg.FMgrace:arg.ADgrace])
 
