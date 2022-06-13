@@ -5,12 +5,12 @@ from scapy.all import *
 
 class PSO:
     """
-    PSO-based Automatic traffic mutation
+    PSO-based Automatic traffic mutation on a series of pkts
     """
     def __init__(self, max_iter, particle_num, grp_size=0, alg='L'):
         self.max_iter = max_iter            # num of the eval and update rounds
-        self.particle_num = particle_num
-        self.grp_size = grp_size
+        self.particle_num = particle_num    # num of total candidate mutants
+        self.grp_size = grp_size            # num of candidate mutants
 
         self.grp_best_dis = [-1.] * (self.particle_num // self.grp_size)
         self.grp_best_index = [-1] * (self.particle_num // self.grp_size)
@@ -27,10 +27,10 @@ class PSO:
 
     def execute(
         self,
-        last_end_time,  # initializer
-        groupList,  # initializer
-        max_time_extend,  # initializer
-        max_cft_pkt,  # initializer
+        last_end_time,          # the timestamp of the pkt right before the first pkl in groupList
+        groupList,              # the malicious pkts for manipulation
+        max_time_extend,
+        max_cft_pkt,
         min_time_extend,
         max_crafted_pkt_prob,
         mimic_set,  # evaluate
@@ -61,20 +61,25 @@ class PSO:
         iter = 0
         while True:
             avg_dis = 0
+            # iterate through each group of particles
             for i in range(0, self.particle_num, self.grp_size):
 
                 # print("--@PSO: process grp %d, no.%d~%d"%(i/self.grp_size,i,i+self.grp_size-1), "...")
+                # iterate through each particle in the group and find the one with the best score
                 for j in range(i, i + self.grp_size):
+                    # evaluate the particle
                     grp_i = int(i / self.grp_size)
                     FE_time += self.swarm[j].evaluate(mimic_set, nstat,
                                                       knormer)  # tmp_pcap_file
                     avg_dis += self.swarm[j].dis
 
+                    # check if the particle is the best in the group
                     if self.swarm[j].dis < self.grp_best_dis[
                             grp_i] or self.grp_best_dis[grp_i] == -1.:
                         self.grp_best_index[grp_i] = j
                         self.grp_best_dis[grp_i] = self.swarm[j].dis
 
+                # check if the group best is the best among all groups
                 if self.grp_best_dis[
                         grp_i] < self.global_best_dis or self.global_best_dis == -1.:
                     self.global_best_index = self.grp_best_index[grp_i]
@@ -82,6 +87,7 @@ class PSO:
 
                 grp_best_X = self.swarm[self.grp_best_index[grp_i]].X
 
+                # update the particles in the group w.r.t. the group best
                 for j in range(i, i + self.grp_size):
                     # print("--@PSO: update_V swarm", j, "...")
                     self.swarm[j].update_v(grp_best_X, w, c1, c2)
