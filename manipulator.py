@@ -53,7 +53,7 @@ class Manipulator:
             mal_pcap_file,
             mimic_set,
             knormer_file,
-            init_pcap_file="./data/empty.pcap",  # preparatory traffic
+            init_pcap_file='example/init.pcap',  # preparatory traffic
     ):
         print("@Manipulator: Initializing ...")
 
@@ -73,7 +73,7 @@ class Manipulator:
         self.global_FE = Kitsune(init_scapy_in, np.Inf)
 
         # compile preparatory traffic if exists
-        if init_pcap_file != "./data/empty.pcap":
+        if init_pcap_file != 'example/init.pcap':
             RunFE(self.global_FE)
 
     def change_manipulator_params(self,
@@ -187,7 +187,7 @@ class Manipulator:
 
             ttime1 = time.process_time()
             nstat = self.global_FE.FE.nstat
-            self.global_FE = Kitsune(STA_best_pktList, np.Inf, False)
+            self.global_FE = Kitsune(STA_best_pktList, np.Inf, roll_back=False)
             self.global_FE.FE.nstat = safelyCopyNstat(nstat, False)
             RunFE(self.global_FE)
             ttime2 = time.process_time()
