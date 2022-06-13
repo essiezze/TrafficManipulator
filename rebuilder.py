@@ -19,6 +19,9 @@ def rebuild(
     groupList,          # the original malicious packets
     # tmp_pcap_file
 ):
+    """
+    Rebuild a group of packets
+    """
 
     newList = []
 
