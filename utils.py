@@ -11,9 +11,9 @@ def Euclidean_Distance(v1, v2):
 
 class Unit:
     def __init__(self, grp_size, max_cft_pkt):
-        self.mal = np.zeros((grp_size, 2))
+        self.mal = np.zeros((grp_size, 2))                  # [interval time, num of crfted pkts]
         # print(grp_size,max_cft_pkt)
-        self.craft = np.zeros((grp_size, max_cft_pkt, 3))
+        self.craft = np.zeros((grp_size, max_cft_pkt, 3))   # [interval time, # protocol lyrs, payload size]
 
 
 class KNnormalizer:
