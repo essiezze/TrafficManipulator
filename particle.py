@@ -33,8 +33,8 @@ class Particle:
         self.last_end_time = last_end_time
         self.proto_max_lmt = []
 
-        self.pktList = None
-        self.feature = None
+        self.pktList = None                     # the reconstructed pkts after mutation
+        self.feature = None                     # the feature of mutated traffic
         self.all_feature = None
         self.local_FE = None
 
@@ -69,7 +69,7 @@ class Particle:
         t1 = time.process_time()
 
         # extract features
-        self.local_FE = Kitsune(self.pktList, np.Inf, True)
+        self.local_FE = Kitsune(self.pktList, np.Inf, roll_back=True)
         self.local_FE.FE.nstat = safelyCopyNstat(nstat, True)
         self.feature, self.all_feature = RunFE(self.local_FE,
                                                origin_pos=mal_pos)
