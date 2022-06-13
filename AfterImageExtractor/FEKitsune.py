@@ -1,3 +1,5 @@
+import numpy as np
+
 from AfterImageExtractor.FeatureExtractor import *
 
 STOP_FLAG = 999999999.
@@ -26,9 +28,15 @@ STOP_FLAG = 999999999.
 
 class Kitsune:
     #def __init__(self,file_path,limit,max_autoencoder_size=10,FM_grace_period=None,AD_grace_period=10000,learning_rate=0.1,hidden_ratio=0.75,):
-    def __init__(self, file_path, limit, roll_back=False):
+    def __init__(self,
+                 scapyin,                       # pcap file pointer opened with scpay
+                 limit=np.Inf,                  # the number of packets to extract
+                 max_host=100000000000,         # maximum host allowed to store in memory
+                 max_sessions=100000000000,     # maximum sessions allowed to store in memory
+                 roll_back=False):
+
         #init packet feature extractor (AfterImage)
-        self.FE = FE(file_path,limit,roll_back)
+        self.FE = FE(scapyin, max_host, max_sessions, limit, roll_back)
         self.roll_back = roll_back
 
     def proc_next_packet(self):

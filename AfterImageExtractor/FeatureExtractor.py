@@ -20,21 +20,19 @@ import subprocess
 # If wireshark is installed (tshark) it is used to parse (it's faster), otherwise, scapy is used (much slower).
 # If wireshark is used then a tsv file (parsed version of the pcap) will be made -which you can use as your input next time
 class FE:
-    def __init__(self,scapyin,limit=np.inf,roll_back=False):  ## file_path
+    def __init__(self, scapyin, max_host, max_session, limit, roll_back=False):
         self.path = None ## file_path
         # self.limit = limit
         self.parse_type = "scapy" # None #unknown
         self.curPacketIndx = 0
         self.tsvin = None #used for parsing TSV file
         self.scapyin = scapyin # None #used for parsing pcap with scapy
-        self.limit = len(self.scapyin)
+        self.limit = limit
         ### Prep pcap ##
         # self.__prep__()
 
         ### Prep Feature extractor (AfterImage) ###
-        maxHost = 100000000000
-        maxSess = 100000000000
-        self.nstat = ns.netStat(np.nan, maxHost, maxSess,roll_back)
+        self.nstat = ns.netStat(np.nan, max_host, max_session,roll_back)
 
     def _get_tshark_path(self):
         if platform.system() == 'Windows':
@@ -146,7 +144,18 @@ class FE:
                     dstIP = row[3]  # dst MAC
 
         elif self.parse_type == "scapy":
-            packet = self.scapyin[self.curPacketIndx]
+            # read the next packet if a PcapReader is passed in
+            if type(self.scapyin) in [PcapReader, PcapNgReader]:
+                try:
+                    packet = self.scapyin.next()
+                except StopIteration:
+                    return []
+            else:
+                if self.curPacketIndx < len(self.scapyin):
+                    packet = self.scapyin[self.curPacketIndx]
+                else:
+                    return []
+
             IPtype = np.nan
             timestamp = packet.time
             framelen = len(packet)

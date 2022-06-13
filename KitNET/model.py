@@ -73,12 +73,64 @@ class tKitsune:
         return self.AnomDetector.process(x)  # will train during the grace periods, then execute on all the rest.
 
 
+def exec_model(feat_file_path: str, model_path: str, rmse_output_path: str, max_AE, encoding_output_path=None):
+    feature = np.load(feat_file_path)
+    # feature = feature[arg.FMgrace:]
+    feature_size = feature.shape[1]
+    # delete pcc-related features
+    feature[:, 33:50:4] = 0.
+    feature[:, 83:100:4] = 0.
+    output_encodings = bool(encoding_output_path)
+    ekn = eKitsune(model_path, feature_size, max_AE, output_encode=output_encodings)
+
+    encodings = None
+    if output_encodings:
+        rmse, encodings = RunKN(ekn, feature)
+    else:
+        rmse = RunKN(ekn, feature)
+    rmse = np.array(rmse)
+    with open(rmse_output_path, 'wb') as f:
+        pkl.dump(rmse, f)
+    with open(model_path, "rb") as f:
+        _ = pkl.load(f)
+        _ = pkl.load(f)
+        _ = pkl.load(f)
+        AD_threshold = pkl.load(f)
+
+    # save encoding
+    if output_encodings:
+        with open(encoding_output_path, 'wb') as f:
+            pkl.dump(encodings, f)
+
+    return AD_threshold, rmse
+
+
+def plot_rmse(AD_threshold, rmse, title="RMSE of Test set", save_path=None):
+    x = np.arange(0, len(rmse), 1)
+    plt.figure()
+    plt.scatter(x, rmse, s=12, c='r')
+    plt.plot(x, [AD_threshold] * len(rmse), c='black', linewidth=2, label="AD_threshold")
+    plt.title(title)
+    plt.xlabel('pkt no.')
+    plt.ylabel('RMSE in Kitsune')
+    plt.legend()
+    if not save_path:
+        plt.show()
+    else:
+        plt.savefig(save_path, dpi=300)
+
+
 if __name__ == "__main__":
     parse = argparse.ArgumentParser()
 
     parse.add_argument('-M', '--mode', type=str, default='exec', help="{train,exec}")
 
-    parse.add_argument('-tf', '--feat_file_path', type=str, required=True, help="train or execute feature file path (.npy)")
+    path_to_feat_file_arg_group = parse.add_mutually_exclusive_group(required=True)
+    path_to_feat_file_arg_group.add_argument('-tf', '--feat_file_path', type=str,
+                                             help="train or execute feature file path (.npy)")
+    path_to_feat_file_arg_group.add_argument('-tfs', '--path_to_feat_files', type=str,
+                                             help="path to a file storing multiple feature file paths for training")
+
     parse.add_argument('-rf', '--RMSE_file_path', type=str,
                        help="resulting rmse file (.pkl) path, only for execute mode!")
 
@@ -98,18 +150,45 @@ if __name__ == "__main__":
 
     if arg.mode == 'train':
         print("Warning: under TRAIN mode!")
-        feature = np.load(arg.feat_file_path)
-        feature = feature[:arg.FMgrace + arg.ADgrace]
-        feature_size = feature.shape[1]
+        feature_size = None
+        feat_files = []
+        tkn = None
 
-        tkn = tKitsune(arg.model_file_path, feature_size, arg.maxAE, arg.FMgrace, arg.ADgrace)
-        rmse = RunKN(tkn, feature)
-        AD_threshold = max(rmse[arg.FMgrace:])
+        if arg.feat_file_path:
+            feat_files.append(arg.feat_file_path)
+        else:
+            newline = None
+            with open(arg.path_to_feat_files) as fp:
+                newline = fp.readline().rstrip()
+                while newline != "":
+                    if not newline.isspace():
+                        feat_files.append(newline)
+                    newline = fp.readline().rstrip()
+
+        # train
+        rmses = []
+        for feat_file_path in feat_files:
+            print(f"Start training with {feat_file_path}")
+            feature = np.load(feat_file_path)
+            feature = feature[:arg.FMgrace + arg.ADgrace]
+            if feature_size is None:
+                feature_size = feature.shape[1]
+            elif feature_size != feature.shape[1]:
+                raise RuntimeError("Feature size does not match!")
+
+            if tkn is None:
+                tkn = tKitsune(arg.model_file_path, feature_size, arg.maxAE, arg.FMgrace, arg.ADgrace)
+
+            rmses.extend(RunKN(tkn, feature))
+
+        AD_threshold = max(rmses[arg.FMgrace:])
 
         # x = np.arange(0,len(rmse),1)
         # plt.scatter(x,rmse)
         # plt.show()
 
+        print(f"Number of feature files: {len(feat_files)}")
+        print(f"Number of packets trained: {tkn.AnomDetector.n_trained}")
         print("AD_threshold:", AD_threshold)
 
         with open(arg.model_file_path, "ab") as f:
@@ -118,54 +197,18 @@ if __name__ == "__main__":
     elif arg.mode == 'exec':
         print("Warning: under EXECUTE mode!")
 
-        feature = np.load(arg.feat_file_path)
-        # feature = feature[arg.FMgrace:]
-        feature_size = feature.shape[1]
-
-        # delete pcc-related features
-        feature[:, 33:50:4] = 0.
-        feature[:, 83:100:4] = 0.
-
-        output_encodings = bool(arg.encoding_path)
-        ekn = eKitsune(arg.model_file_path, feature_size, arg.maxAE, output_encode=output_encodings)
-
-        encodings = None
-        if output_encodings:
-            rmse, encodings = RunKN(ekn, feature)
-        else:
-            rmse = RunKN(ekn, feature)
-        rmse = np.array(rmse)
-
-        with open(arg.RMSE_file_path, 'wb') as f:
-            pkl.dump(rmse, f)
-
-        with open(arg.model_file_path, "rb") as f:
-            _ = pkl.load(f)
-            _ = pkl.load(f)
-            _ = pkl.load(f)
-            AD_threshold = pkl.load(f)
-
-        # output encoding
-        if output_encodings:
-            with open(arg.encoding_path, 'wb') as f:
-                pkl.dump(encodings, f)
+        AD_threshold, rmse = exec_model(arg.feat_file_path,
+                                        arg.model_file_path,
+                                        arg.RMSE_file_path,
+                                        arg.maxAE,
+                                        encoding_output_path=arg.encoding_path)
 
         print('AD_threshold:', AD_threshold)
         print('# rmse over AD_t:', rmse[rmse > AD_threshold].shape)
         print('Total number:', len(rmse))
         print("rmse mean:", np.mean(rmse))
 
-        x = np.arange(0,len(rmse),1)
-        plt.figure()
-        plt.scatter(x,rmse,s=12, c='r')
-        plt.plot(x,[AD_threshold]*len(rmse),c='black',linewidth=2,label="AD_threshold")
-        plt.title("RMSE of Test set")
-        plt.xlabel('pkt no.')
-        plt.ylabel('RMSE in Kitsune')
-        plt.legend()
-        plt.show()
-
-
+        plot_rmse(AD_threshold, rmse)
     else:
         raise RuntimeError("argument -M is wrong! choose 'train' or 'execute'")
     
